@@ -1,0 +1,250 @@
+exchange:
+  name: hyperliquid
+  sandbox: true
+  rate_limit_ms: 1100   # Hyperliquid allows ~60 info calls/min (1200 weight, 20/call) — 1100ms = ~55/min, safe margin
+  quote_currency: USDC
+  fallbacks:
+    - name: bybit
+      rate_limit_ms: 500
+
+risk:
+  starting_capital: 10000.0
+  max_drawdown_pct: 0.30
+  max_position_pct: 0.25
+  default_stop_loss_pct: 0.03
+  max_open_positions: 3
+  max_daily_trades: 10
+  cooldown_after_loss_min: 30
+  profit_split:
+    bot_pct: 0.50              # 50% of profits go to bot's reinvestment pool
+    user_pct: 0.50             # 50% of profits go to user's conservative pool
+    user_take_profit_pct: 0.06 # User pool takes profit at 6% gain
+    bot_take_profit_pct: 0.08  # Bot pool takes profit at 8% gain (more aggressive)
+    user_trailing_stop_pct: 0.02  # User pool trails tighter (2%)
+    bot_trailing_stop_pct: 0.035  # Bot pool trails wider (3.5%)
+
+agent:
+  mode: paper
+  cycle_interval_sec: 300
+  pairs:
+    # Crypto
+    - BTC/USDC:USDC
+    - ETH/USDC:USDC
+    - AAVE/USDC:USDC
+    # Synthetic stocks
+    - XYZ-AAPL/USDC:USDC
+    - XYZ-TSLA/USDC:USDC
+    - XYZ-NVDA/USDC:USDC
+    - XYZ-MSFT/USDC:USDC
+    # Synthetic commodities
+    - XYZ-GOLD/USDC:USDC
+    - XYZ-BRENTOIL/USDC:USDC
+    - XYZ-SILVER/USDC:USDC
+    - XYZ-NATGAS/USDC:USDC
+    # Synthetic indices / ETFs
+    - XYZ-XYZ100/USDC:USDC
+    # Synthetic stocks (additional)
+    - XYZ-TSM/USDC:USDC
+    # Forex
+    - XYZ-EUR/USDC:USDC
+    # RWA
+    - ONDO/USDC:USDC
+  timeframes:
+    - 5m
+    - 15m
+    - 1h
+    - 4h
+  claude_model: claude-haiku-4-5-20251001
+  review_every_n_trades: 10
+  dry_run: false
+  consensus_threshold: 0.66   # 2/3 majority to approve a trade
+
+  escalation:
+    enabled: true
+    min_signal_confidence: 0.7    # Only escalate high-confidence signals
+    tiebreaker_provider: claude   # Which provider to use as tiebreaker
+
+  # Multi-model ensemble — enable providers by setting their API key in .env
+  # Models are queried in parallel; consensus_threshold determines approval
+  providers:
+    - name: gemini                         # Paid tier
+      model: gemini-2.5-flash
+      enabled: true
+    - name: claude                         # ~$13.50/mo
+      model: claude-haiku-4-5-20251001
+      enabled: true
+    - name: ollama                         # Local (4b) first, Hetzner fallback (CPU/14b)
+      model: qwen3:4b
+      base_url: http://localhost:11434/v1
+      fallback_url: http://204.168.157.171:11434
+      enabled: true
+
+data_sources:
+  max_price_divergence_pct: 3.0       # Max % divergence between sources before flagging (synthetics need headroom)
+  anomaly_zscore_threshold: 3.0       # Z-score threshold for anomaly detection
+
+event_blocking:
+  enabled: true
+  stocks_hours_before: 24             # Block stock trades 24h before earnings
+  stocks_hours_after: 2               # Block stock trades 2h after earnings
+  macro_events:
+    - FOMC
+    - CPI
+    - NFP
+
+dex_scanner:
+  enabled: true
+  venues:
+    - name: dydx
+      enabled: true
+      taker_fee_bps: 5.0
+    - name: gmx
+      enabled: false                  # Enable after testing
+      taker_fee_bps: 7.0
+  scan_interval_sec: 60               # Don't scan more than once per minute
+  divergence_alert_pct: 1.0           # Alert if >1% price divergence across venues
+
+trigger_orders:
+  enabled: true
+  trailing_update_min_interval_sec: 300   # 5 min minimum between trail updates
+  trailing_update_min_move_pct: 0.5       # Only update if stop moved >0.5%
+
+execution_router:
+  primary_venue: hyperliquid
+  enable_multi_venue: false           # Future: when capital justifies multi-venue
+  slippage_tracking: true
+
+strategy:
+  lookback:
+    default: 20            # Default lookback periods for range/breakout detection
+    min_candles: 30        # Minimum candles required before any strategy runs
+    per_asset:
+      BTC/USDC:USDC:
+        lookback: 20
+      ETH/USDC:USDC:
+        lookback: 20
+      AAVE/USDC:USDC:
+        lookback: 20
+      XYZ-AAPL/USDC:USDC:
+        lookback: 15
+      XYZ-TSLA/USDC:USDC:
+        lookback: 15
+      XYZ-NVDA/USDC:USDC:
+        lookback: 15
+      XYZ-MSFT/USDC:USDC:
+        lookback: 15
+      XYZ-GOLD/USDC:USDC:
+        lookback: 20
+      XYZ-BRENTOIL/USDC:USDC:
+        lookback: 10       # Short history — fewer candles available
+      XYZ-SILVER/USDC:USDC:
+        lookback: 20
+      XYZ-XYZ100/USDC:USDC:
+        lookback: 20
+      XYZ-TSM/USDC:USDC:
+        lookback: 15
+      XYZ-EUR/USDC:USDC:
+        lookback: 20
+      XYZ-NATGAS/USDC:USDC:
+        lookback: 10
+      ONDO/USDC:USDC:
+        lookback: 20
+
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bb_period: 20
+  bb_std: 2.0
+  atr_period: 14
+  ema_fast: 9
+  ema_slow: 21
+  volume_sma_period: 20
+
+  # Per-pair strategy weights — from 30d Hyperliquid backtests (2026-03-12)
+  # Higher weight = strategy generates stronger signals for that pair
+  pair_weights:
+    BTC/USDC:USDC:
+      trend_following: 1.40   # +$73.21, 100% WR — BTC trend king
+      momentum: 0.84          # -$28.82, 22% WR — weak on BTC
+      mean_reversion: 0.94    # -$10.16, 38% WR — marginal
+      breakout: 0.62          # -$70.17, 10% WR — terrible, nearly disabled
+    ETH/USDC:USDC:
+      trend_following: 1.33   # +$52.14, 100% WR — ETH trends too
+      momentum: 0.91          # -$15.09, 30% WR — weak
+      mean_reversion: 0.77    # -$37.47, 32% WR — loses money
+      breakout: 0.65          # -$55.54, 20% WR — bad
+    AAVE/USDC:USDC:
+      mean_reversion: 1.35    # +$55.93, 47% WR — AAVE mean-reverts well
+      trend_following: 1.19   # +$31.17, 60% WR — also works
+      momentum: 1.11          # +$18.34, 46% WR — profitable
+      breakout: 0.65          # -$55.70, 22% WR — AAVE breakouts fail
+    XYZ-AAPL/USDC:USDC:
+      mean_reversion: 1.50    # +$43.65, 100% WR — AAPL mean-reverts strongly
+      momentum: 0.94          # -$5.28, 40% WR — marginal
+      trend_following: 0.83   # -$14.51, 33% WR — stocks less trendy than crypto
+      breakout: 0.75          # -$21.03, 25% WR — poor
+    XYZ-GOLD/USDC:USDC:
+      momentum: 1.35          # +$8.55, 67% WR — gold momentum works
+      trend_following: 1.20   # +$4.90, 50% WR — also works
+      mean_reversion: 0.84    # -$3.80, 25% WR — gold doesn't mean-revert
+      breakout: 0.71          # -$7.07, 40% WR — weak
+    XYZ-BRENTOIL/USDC:USDC:
+      trend_following: 1.28   # +$50.87, 100% WR — oil trends hard
+      breakout: 1.04          # +$6.84, 67% WR — works on oil
+      momentum: 0.74          # -$47.69, 0% WR — momentum destroyed
+      mean_reversion: 0.58    # -$75.98, 8% WR — mean-rev deadly on oil
+    XYZ-SILVER/USDC:USDC:
+      trend_following: 1.39   # +$29.48, 57% WR — silver trends well
+      breakout: 1.23          # +$17.61, 40% WR — breakout works
+      mean_reversion: 1.05    # +$4.08, 38% WR — marginal profit
+      momentum: 0.68          # -$24.58, 27% WR — momentum fails on silver
+    # New pairs (Session 5) — neutral weights until backtested
+    XYZ-TSLA/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-NVDA/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-MSFT/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-XYZ100/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-TSM/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-EUR/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-NATGAS/USDC:USDC:
+      trend_following: 1.2   # Energy trends like oil
+      breakout: 1.1          # Natgas is volatile, breakouts work
+      momentum: 0.8
+      mean_reversion: 0.6    # Mean-rev dangerous on energy
+    ONDO/USDC:USDC:
+      trend_following: 1.0   # Neutral weights until backtested
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+
+  # Correlation guard: don't long ETH if BTC dropped >X% in last hour
+  correlation_guard:
+    enabled: true
+    btc_drop_threshold_pct: -2.0  # Block ETH longs if BTC dropped >2% in 1h
+    btc_pump_threshold_pct: 2.0   # Block ETH shorts if BTC pumped >2% in 1h

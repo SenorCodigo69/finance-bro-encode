@@ -1,0 +1,42 @@
+╭─────────────────────────────── FINANCE AGENT ────────────────────────────────╮
+│   Mode            PAPER                                                      │
+│   Capital         $10000.00                                                  │
+│   Max Drawdown    30%                                                        │
+│   Profit Split    Bot 50% / User 50%                                         │
+│   Take Profit     Bot 8% / User 6%                                           │
+│   Trail Stop      Bot 3.5% / User 2.0%                                       │
+│   Exchange        hyperliquid                                                │
+│   Pairs           BTC/USDC:USDC, ETH/USDC:USDC, AAVE/USDC:USDC,              │
+│                   XYZ-AAPL/USDC:USDC, XYZ-TSLA/USDC:USDC,                    │
+│                   XYZ-NVDA/USDC:USDC, XYZ-MSFT/USDC:USDC,                    │
+│                   XYZ-GOLD/USDC:USDC, XYZ-BRENTOIL/USDC:USDC,                │
+│                   XYZ-SILVER/USDC:USDC                                       │
+│   Cycle           300s                                                       │
+│   AI Models       gemini, grok, claude                                       │
+│   Consensus       66% majority                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+[03/12/26 20:30:03] INFO     Loaded trained ML regime classifier                
+                    INFO     ML regime classifier loaded — will use ML over     
+                             rule-based                                         
+                    INFO     DexScanner initialized: 2 venue(s) (hyperliquid,   
+                             dydx)                                              
+                    INFO     Trigger order manager initialized (on-chain SL/TP) 
+                    INFO     Execution router initialized (primary: hyperliquid,
+                             multi-venue: disabled, slippage tracking: on)      
+                    INFO     Pre-loading exchange markets...                    
+[03/12/26 20:31:44] INFO     Markets loaded: 649 symbols                        
+                    INFO     Initializing AI providers...                       
+                    INFO       + gemini (gemini-2.0-flash)                      
+[03/12/26 20:31:45] INFO       + claude (claude-haiku-4-5-20251001)             
+                    INFO     MultiBrain initialized: 2 provider(s), consensus   
+                             threshold 66%, escalation enabled                  
+                    INFO     Macro analyst + strategy evolver initialized (0    
+                             evolved strategies)                                
+                    INFO     TradFi intel initialized (FRED: disabled, event    
+                             blocking: enabled)                                 
+                    INFO     --- Cycle 1 ---                                    
+                    INFO     Fetching market data...                            
+[03/12/26 20:34:57] WARNING  Source hyperliquid slow: 163811ms                  
+[03/12/26 20:36:09] WARNING  Source hyperliquid slow: 233756ms                  
+[03/12/26 20:37:21] WARNING  Source hyperliquid slow: 303698ms                  
+[03/12/26 20:39:21] WARNING  Source hyperliquid slow: 103868ms                  

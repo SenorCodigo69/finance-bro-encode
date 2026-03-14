@@ -1,0 +1,71 @@
+# Live trading config — $20 USDC on Hyperliquid
+# Created for Encode hackathon demo (2026-03-14)
+# CAREFUL: This is real money. Safety rails are tight.
+
+exchange:
+  name: hyperliquid
+  sandbox: false                    # REAL TRADING
+  rate_limit_ms: 1100
+  quote_currency: USDC
+  fallbacks:
+    - name: bybit
+      rate_limit_ms: 500
+
+risk:
+  starting_capital: 20.0            # $20 USDC
+  max_drawdown_pct: 0.30            # Max $6 loss, then hard stop
+  max_position_pct: 0.25            # Max $5 per position
+  default_stop_loss_pct: 0.02       # 2% stop loss (tighter for small capital)
+  max_open_positions: 1             # Only 1 position at a time with $20
+  max_daily_trades: 5               # Don't overtrade
+  cooldown_after_loss_min: 60       # 1hr cooldown after a loss
+  profit_split:
+    bot_pct: 0.50
+    user_pct: 0.50
+    user_take_profit_pct: 0.06
+    bot_take_profit_pct: 0.08
+    user_trailing_stop_pct: 0.02
+    bot_trailing_stop_pct: 0.035
+
+agent:
+  mode: live                        # LIVE MODE
+  cycle_interval_sec: 300
+  pairs:
+    # Only the most liquid pairs for $20
+    - BTC/USDC:USDC
+    - ETH/USDC:USDC
+    - XYZ-GOLD/USDC:USDC
+  timeframes:
+    - 15m
+    - 1h
+  claude_model: claude-haiku-4-5-20251001
+  review_every_n_trades: 5
+  dry_run: false
+  consensus_threshold: 0.66
+
+  escalation:
+    enabled: true
+    min_signal_confidence: 0.7
+    tiebreaker_provider: claude
+
+  providers:
+    - name: gemini
+      model: gemini-2.5-flash
+      enabled: true
+    - name: claude
+      model: claude-haiku-4-5-20251001
+      enabled: true
+    - name: ollama
+      model: qwen3:4b
+      base_url: http://localhost:11434/v1
+      fallback_url: http://204.168.157.171:11434
+      enabled: true
+
+data_sources:
+  max_price_divergence_pct: 3.0
+  anomaly_zscore_threshold: 3.0
+
+event_blocking:
+  enabled: true
+  stocks_hours_before: 24
+  stocks_hours_after: 2

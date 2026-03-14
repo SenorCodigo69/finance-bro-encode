@@ -1,0 +1,257 @@
+# Aggressive / Stress Test Config
+# Usage: python -m src.main --config config/settings-aggressive.yaml
+#
+# Changes vs default:
+#   - Tighter TP/SL for faster position turnover
+#   - More open positions + daily trades
+#   - Looser signal thresholds (more signals generated)
+#   - 24h max hold time (no forever-longs in sideways markets)
+#   - 1/3 consensus (single model can approve)
+#   - Faster cycles (2 min)
+
+exchange:
+  name: hyperliquid
+  sandbox: true
+  rate_limit_ms: 1100
+  quote_currency: USDC
+  fallbacks:
+    - name: bybit
+      rate_limit_ms: 500
+
+risk:
+  starting_capital: 10000.0
+  max_drawdown_pct: 0.30         # Same — hardcoded cap stays
+  max_position_pct: 0.25         # Same — hardcoded cap stays
+  default_stop_loss_pct: 0.015   # 1.5% (was 3%) — tighter stops
+  max_open_positions: 6          # (was 3) — more concurrent trades
+  max_daily_trades: 30           # (was 10) — much more active
+  cooldown_after_loss_min: 10    # (was 30) — faster recovery
+  max_hold_hours: 24             # NEW — auto-close after 24h
+  profit_split:
+    bot_pct: 0.50
+    user_pct: 0.50
+    user_take_profit_pct: 0.03   # 3% (was 6%) — faster TP
+    bot_take_profit_pct: 0.04    # 4% (was 8%) — faster TP
+    user_trailing_stop_pct: 0.01 # 1% (was 2%) — tighter trail
+    bot_trailing_stop_pct: 0.02  # 2% (was 3.5%) — tighter trail
+
+agent:
+  mode: paper
+  cycle_interval_sec: 120        # 2 min (was 5 min) — faster cycles
+  pairs:
+    # Crypto
+    - BTC/USDC:USDC
+    - ETH/USDC:USDC
+    - AAVE/USDC:USDC
+    # Synthetic stocks
+    - XYZ-AAPL/USDC:USDC
+    - XYZ-TSLA/USDC:USDC
+    - XYZ-NVDA/USDC:USDC
+    - XYZ-MSFT/USDC:USDC
+    # Synthetic commodities
+    - XYZ-GOLD/USDC:USDC
+    - XYZ-BRENTOIL/USDC:USDC
+    - XYZ-SILVER/USDC:USDC
+    - XYZ-NATGAS/USDC:USDC
+    # Synthetic indices / ETFs
+    - XYZ-XYZ100/USDC:USDC
+    # Synthetic stocks (additional)
+    - XYZ-TSM/USDC:USDC
+    # Forex
+    - XYZ-EUR/USDC:USDC
+    # RWA
+    - ONDO/USDC:USDC
+  timeframes:
+    - 5m
+    - 15m
+    - 1h
+    - 4h
+  claude_model: claude-haiku-4-5-20251001
+  review_every_n_trades: 10
+  dry_run: false
+  consensus_threshold: 0.33      # 1/3 — single model can approve
+
+  escalation:
+    enabled: true
+    min_signal_confidence: 0.6   # (was 0.7) — escalate more signals
+    tiebreaker_provider: claude
+
+  providers:
+    - name: gemini
+      model: gemini-2.5-flash
+      enabled: true
+    - name: claude
+      model: claude-haiku-4-5-20251001
+      enabled: true
+    - name: ollama
+      model: qwen3:8b
+      base_url: http://localhost:11434/v1
+      fallback_url: http://204.168.157.171:11434
+      enabled: true
+
+data_sources:
+  max_price_divergence_pct: 3.0  # Raised from 2.0 — synthetics (oil, commodities) diverge more from yfinance
+  anomaly_zscore_threshold: 3.0
+
+event_blocking:
+  enabled: true
+  stocks_hours_before: 24
+  stocks_hours_after: 2
+  macro_events:
+    - FOMC
+    - CPI
+    - NFP
+
+dex_scanner:
+  enabled: true
+  venues:
+    - name: dydx
+      enabled: true
+      taker_fee_bps: 5.0
+    - name: gmx
+      enabled: false
+      taker_fee_bps: 7.0
+  scan_interval_sec: 60
+  divergence_alert_pct: 1.0
+
+trigger_orders:
+  enabled: true
+  trailing_update_min_interval_sec: 180   # 3 min (was 5 min) — update stops faster
+  trailing_update_min_move_pct: 0.3       # (was 0.5%) — trail tighter
+
+execution_router:
+  primary_venue: hyperliquid
+  enable_multi_venue: false
+  slippage_tracking: true
+
+strategy:
+  lookback:
+    default: 15              # (was 20) — shorter lookback = more responsive
+    min_candles: 20          # (was 30) — start trading sooner
+    per_asset:
+      BTC/USDC:USDC:
+        lookback: 15
+      ETH/USDC:USDC:
+        lookback: 15
+      AAVE/USDC:USDC:
+        lookback: 15
+      XYZ-AAPL/USDC:USDC:
+        lookback: 10
+      XYZ-TSLA/USDC:USDC:
+        lookback: 10
+      XYZ-NVDA/USDC:USDC:
+        lookback: 10
+      XYZ-MSFT/USDC:USDC:
+        lookback: 10
+      XYZ-GOLD/USDC:USDC:
+        lookback: 15
+      XYZ-BRENTOIL/USDC:USDC:
+        lookback: 8
+      XYZ-SILVER/USDC:USDC:
+        lookback: 15
+      XYZ-XYZ100/USDC:USDC:
+        lookback: 15
+      XYZ-TSM/USDC:USDC:
+        lookback: 10
+      XYZ-EUR/USDC:USDC:
+        lookback: 15
+      XYZ-NATGAS/USDC:USDC:
+        lookback: 8
+      ONDO/USDC:USDC:
+        lookback: 15
+
+  rsi_period: 14
+  rsi_oversold: 35             # (was 30) — wider band = more signals
+  rsi_overbought: 65           # (was 70) — wider band = more signals
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bb_period: 20
+  bb_std: 2.0
+  atr_period: 14
+  ema_fast: 9
+  ema_slow: 21
+  volume_sma_period: 20
+
+  # Same per-pair weights as default
+  pair_weights:
+    BTC/USDC:USDC:
+      trend_following: 1.40
+      momentum: 0.84
+      mean_reversion: 0.94
+      breakout: 0.62
+    ETH/USDC:USDC:
+      trend_following: 1.33
+      momentum: 0.91
+      mean_reversion: 0.77
+      breakout: 0.65
+    AAVE/USDC:USDC:
+      mean_reversion: 1.35
+      trend_following: 1.19
+      momentum: 1.11
+      breakout: 0.65
+    XYZ-AAPL/USDC:USDC:
+      mean_reversion: 1.50
+      momentum: 0.94
+      trend_following: 0.83
+      breakout: 0.75
+    XYZ-GOLD/USDC:USDC:
+      momentum: 1.35
+      trend_following: 1.20
+      mean_reversion: 0.84
+      breakout: 0.71
+    XYZ-BRENTOIL/USDC:USDC:
+      trend_following: 1.28
+      breakout: 1.04
+      momentum: 0.74
+      mean_reversion: 0.58
+    XYZ-SILVER/USDC:USDC:
+      trend_following: 1.39
+      breakout: 1.23
+      mean_reversion: 1.05
+      momentum: 0.68
+    XYZ-TSLA/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-NVDA/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-MSFT/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-XYZ100/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-TSM/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-EUR/USDC:USDC:
+      trend_following: 1.0
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+    XYZ-NATGAS/USDC:USDC:
+      trend_following: 1.2   # Energy trends like oil
+      breakout: 1.1          # Natgas is volatile, breakouts work
+      momentum: 0.8
+      mean_reversion: 0.6    # Mean-rev dangerous on energy
+    ONDO/USDC:USDC:
+      trend_following: 1.0   # Neutral weights until backtested
+      momentum: 1.0
+      mean_reversion: 1.0
+      breakout: 1.0
+
+  correlation_guard:
+    enabled: true
+    btc_drop_threshold_pct: -2.0
+    btc_pump_threshold_pct: 2.0
