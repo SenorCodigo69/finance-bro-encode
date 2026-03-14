@@ -29,3 +29,4 @@ zk/contracts/cache/
 zk/contracts/out/
 .env
 data/agent.db*
+logs/
